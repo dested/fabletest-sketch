@@ -1,9 +1,10 @@
 // Game loop: player movement (grid-stepped, smooth), camera follow, input.
 
 import { World } from '../engine/world';
-import { Renderer, Camera, PlayerView } from '../render/renderer';
+import { Renderer, Camera, Sprite } from '../render/renderer';
 import { Dir, DX, DY } from '../engine/tileset';
 import { WorldParams } from '../engine/params';
+import { NpcManager } from './npcs';
 
 const WALK_SPEED = 5.2; // cells per second
 
@@ -19,6 +20,8 @@ export class Game {
   world: World;
   cam: Camera;
   renderer = new Renderer();
+  npcs = new NpcManager();
+  private npcSyncT = 0;
   player = { x: 0, y: 0, fx: 0, fy: 0, z: 1, facing: 0 as Dir, step: 0 };
   private moveTarget: { x: number; y: number } | null = null;
   private keys = new Set<string>();
@@ -42,6 +45,7 @@ export class Game {
   /** swap world for new params, keeping player position if possible */
   setParams(params: WorldParams) {
     this.world = new World(params);
+    this.npcs = new NpcManager();
     const { x, y } = this.player;
     const f = this.world.flagsAt(x, y);
     if (f & 1 /* blocked */ || this.world.isWater(x, y)) {
@@ -118,7 +122,7 @@ export class Game {
   private onWheel = (e: WheelEvent) => {
     e.preventDefault();
     const f = Math.exp(-e.deltaY * 0.0012);
-    this.cam.zoom = Math.min(1.2, Math.max(0.16, this.cam.zoom * f));
+    this.cam.zoom = Math.min(1.2, Math.max(0.07, this.cam.zoom * f));
   };
 
   private wishDir(): Dir | -1 {
@@ -167,6 +171,14 @@ export class Game {
     }
     p.z = this.world.surfaceZ(p.fx, p.fy);
 
+    // NPCs
+    this.npcSyncT -= dt;
+    if (this.npcSyncT <= 0) {
+      this.npcSyncT = 1.2;
+      this.npcs.sync(this.world, p.x, p.y);
+    }
+    this.npcs.update(this.world, dt, p.fx, p.fy);
+
     // camera spring-follow
     const k = 1 - Math.exp(-dt * 5);
     this.cam.x += (p.fx - this.cam.x) * k;
@@ -176,13 +188,22 @@ export class Game {
   private render() {
     const ctx = this.canvas.getContext('2d')!;
     const w = this.canvas.width, h = this.canvas.height;
-    const pv: PlayerView = {
+    const sprites: Sprite[] = [{
       fx: this.player.fx,
       fy: this.player.fy,
       z: this.player.z,
-      facing: this.player.facing,
       step: this.player.step,
-    };
-    this.renderer.draw(ctx, this.world, this.cam, pv, w, h);
+      cloak: '#7a4ec9',
+      trim: '#ffd9a8',
+      hood: '#7a4ec9',
+      scale: 1,
+    }];
+    for (const n of this.npcs.npcs.values()) {
+      sprites.push({
+        fx: n.fx, fy: n.fy, z: n.z, step: n.step,
+        cloak: n.cloak, trim: n.trim, hood: n.cloak, scale: 0.88,
+      });
+    }
+    this.renderer.draw(ctx, this.world, this.cam, sprites, w, h);
   }
 }

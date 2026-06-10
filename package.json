@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "GITHUB_PAGES=1 vite build && cd dist && git init -q && git checkout -qb gh-pages && git add -A && git commit -qm deploy && git push -f https://github.com/dested/fabletest-sketch gh-pages && cd .. && rm -rf dist/.git"
   },
   "dependencies": {
     "react": "^19.2.6",

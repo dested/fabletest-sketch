@@ -17,7 +17,7 @@ src = sys.argv[1] if len(sys.argv) > 1 else '/tmp/tilecheck/scene.json'
 out = sys.argv[2] if len(sys.argv) > 2 else '/tmp/tilecheck/scene.png'
 
 data = json.load(open(src))
-tiles = data['tiles']
+tiles = [t for t in data['tiles'] if not t['name'].startswith('__')]
 tiles.sort(key=lambda t: ((t['x'] + t['y']) * 64 + t['z'], t['x']))
 
 cache = {}

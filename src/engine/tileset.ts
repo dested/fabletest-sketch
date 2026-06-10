@@ -36,6 +36,8 @@ export interface Placed {
   x: number;
   y: number;
   z: number;
+  /** for '__shade' overlay pseudo-tiles */
+  alpha?: number;
 }
 
 export function tileKey(pack: Pack, name: string, dir: Dir): string {

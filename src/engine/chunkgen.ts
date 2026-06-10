@@ -58,6 +58,7 @@ export class ChunkGen {
     }
     const rivers = this.f.riversTouching(x0 - A, y0 - A, x0 + CHUNK + A, y0 + CHUNK + A);
     const stamps = this.f.stampsTouching(x0 - A, y0 - A, x0 + CHUNK + A, y0 + CHUNK + A);
+    const roads = this.f.roadsTouching(x0 - A, y0 - A, x0 + CHUNK + A, y0 + CHUNK + A);
     const featCell = (wx: number, wy: number): CellFeature | undefined => {
       for (const st of stamps) {
         const c = st.cells.get(cellKey(wx, wy));
@@ -66,12 +67,29 @@ export class ChunkGen {
       return undefined;
     };
     const isPath = (wx: number, wy: number): boolean => {
+      if (roads.has(cellKey(wx, wy))) return true;
       const c = featCell(wx, wy);
       return !!c?.path;
     };
 
     const put = (pack: Pack, name: string, dir: Dir, wx: number, wy: number, z: number) =>
       placed.push({ pack, name, dir, x: wx, y: wy, z });
+
+    // terrain-cast shadow: sun sits beyond the screen-top (T) corner, so taller
+    // ground toward (-x,-y) shades this cell. Drawn as a translucent diamond.
+    const putShade = (wx: number, wy: number, surfZ: number) => {
+      let excess = 0;
+      for (let k = 1; k <= 5; k++) {
+        const hn = this.f.heightAt(wx - k, wy - k);
+        excess = Math.max(excess, hn - surfZ - k * 0.9);
+      }
+      if (excess > 0) {
+        placed.push({
+          pack: 'town', name: '__shade', dir: DIR_N, x: wx, y: wy, z: surfZ,
+          alpha: Math.min(0.30, 0.10 + 0.07 * excess),
+        });
+      }
+    };
 
     const p = this.t.p;
 
@@ -140,7 +158,7 @@ export class ChunkGen {
         }
 
         // ---- top cube ----
-        const pathHere = !!feat?.path || isPath(wx, wy);
+        const pathHere = isPath(wx, wy);
         if (riv && riv.fall !== undefined) {
           // waterfall column: water_fall cubes from fallTo+1 .. h
           const wf = waterfallSuffix(riv.fall);
@@ -267,6 +285,14 @@ export class ChunkGen {
             }
           }
         }
+      }
+    }
+
+    // shadow pass (after all tiles so stable sort keeps shades above cubes)
+    for (let ly = 0; ly < CHUNK; ly++) {
+      for (let lx = 0; lx < CHUNK; lx++) {
+        const h = H[idx(lx, ly)];
+        putShade(x0 + lx, y0 + ly, h === 0 ? 1 : h);
       }
     }
 
