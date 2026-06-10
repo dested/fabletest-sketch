@@ -62,45 +62,56 @@ export class World {
   }
 
   /**
-   * Can the player step from cell A to adjacent cell B?
-   * Rules: B not blocked; same walk plane, or 1-level difference when the
-   * lower cell is a ramp descending along the step axis.
+   * Walking surface inside one cell, evaluated at fractional world coords.
+   * Flat cells are flat at their plane. Wedge cells (straight slopes AND
+   * convex/concave corners) interpolate bilinearly between vertex heights,
+   * where each grid vertex takes the MAX walk plane of its 4 touching cells,
+   * clamped to [p, p+1]. This is continuous across every cell boundary, so
+   * walking over any slope or corner is smooth.
    */
-  canStep(ax: number, ay: number, d: Dir): boolean {
-    const bx = ax + DX[d], by = ay + DY[d];
-    const fb = this.flagsAt(bx, by);
-    if (fb & F_BLOCKED) return false;
-    const pa = this.effectivePlane(ax, ay);
-    const pb = this.effectivePlane(bx, by);
-    const fa = this.flagsAt(ax, ay);
-    if (pa === pb) return true;
-    if (Math.abs(pa - pb) !== 1) return false;
-    // need a ramp on the LOWER cell, aligned with the movement axis
-    const low = pa < pb ? { x: ax, y: ay, f: fa } : { x: bx, y: by, f: fb };
-    if (!(low.f & F_RAMP)) return false;
-    const rd = this.rampDirAt(low.x, low.y);
-    return rd === d || rd === ((d + 2) & 3);
-  }
-
-  /** plane the player stands on at the cell's CENTER (ramps count as +0.5) */
-  private effectivePlane(x: number, y: number): number {
-    return this.planeAt(x, y);
+  zInCell(cx: number, cy: number, fx: number, fy: number): number {
+    const p = this.planeAt(cx, cy);
+    if (!(this.flagsAt(cx, cy) & F_RAMP)) return p;
+    const vtx = (ix: number, iy: number): number => {
+      // vertex at grid corner (cx-0.5+ix, cy-0.5+iy): 4 touching cells
+      let m = p;
+      for (let dx = ix - 1; dx <= ix; dx++) for (let dy = iy - 1; dy <= iy; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        m = Math.max(m, this.planeAt(cx + dx, cy + dy));
+      }
+      return Math.min(p + 1, m);
+    };
+    const du = Math.min(1, Math.max(0, fx - cx + 0.5));
+    const dv = Math.min(1, Math.max(0, fy - cy + 0.5));
+    const v00 = vtx(0, 0), v10 = vtx(1, 0), v01 = vtx(0, 1), v11 = vtx(1, 1);
+    return (
+      v00 * (1 - du) * (1 - dv) +
+      v10 * du * (1 - dv) +
+      v01 * (1 - du) * dv +
+      v11 * du * dv
+    );
   }
 
   /**
-   * Visual z for the player at fractional position (fx, fy):
-   * flat cells -> plane; ramp cells -> interpolate along descent axis.
+   * Can the player step from cell A to adjacent cell B? B must be unblocked
+   * and the walking surfaces must meet at the shared edge (within half a
+   * step) — flat<->flat same plane, any wedge that bridges a level, and
+   * never a bare cliff.
    */
+  canStep(ax: number, ay: number, d: Dir): boolean {
+    const bx = ax + DX[d], by = ay + DY[d];
+    if (this.flagsAt(bx, by) & F_BLOCKED) return false;
+    const mx = ax + DX[d] * 0.5, my = ay + DY[d] * 0.5;
+    const za = this.zInCell(ax, ay, mx, my);
+    const zb = this.zInCell(bx, by, mx, my);
+    // surfaces must genuinely meet at the crossing point — anything bigger
+    // than a kerb reads as a pop or a cliff
+    return Math.abs(za - zb) < 0.26;
+  }
+
+  /** visual z for a character at fractional position */
   surfaceZ(fx: number, fy: number): number {
-    const x = Math.round(fx), y = Math.round(fy);
-    const p = this.planeAt(x, y);
-    const f = this.flagsAt(x, y);
-    if (!(f & F_RAMP)) return p;
-    const rd = this.rampDirAt(x, y);
-    // ramp surface: plane p at the low edge .. p+1 at the high edge.
-    // fraction along descent dir within the cell: t=+0.5 at low edge.
-    const t = rd === 0 ? fy - y : rd === 1 ? fx - x : rd === 2 ? y - fy : x - fx;
-    return p + (0.5 - Math.max(-0.5, Math.min(0.5, t)));
+    return this.zInCell(Math.round(fx), Math.round(fy), fx, fy);
   }
 
   isWater(x: number, y: number): boolean {

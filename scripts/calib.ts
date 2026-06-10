@@ -193,5 +193,5 @@ SCENES['E'] = () => {
 
 const which = process.argv[2] || 'all';
 for (const k of Object.keys(SCENES)) { if (which === 'all' || which === k) SCENES[k](); }
-writeFileSync('/tmp/tilecheck/scene.json', JSON.stringify({ tiles }));
+writeFileSync('/Users/sal/code/fabletest-sketch/tmp/scene.json', JSON.stringify({ tiles }));
 console.log('wrote', tiles.length, 'tiles');

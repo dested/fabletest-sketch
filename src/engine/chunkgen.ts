@@ -234,12 +234,14 @@ export class ChunkGen {
             wedge = true;
           } else if (hi.length === 2 && (((hi[0] + 1) & 3) === hi[1] || ((hi[1] + 1) & 3) === hi[0])) {
             put(pack, 'grass_slopeConcave', concaveSuffix(hi[0], hi[1]), wx, wy, h + 1);
+            flags[ci] |= F_RAMP; // corner wedges are walkable surfaces too
             wedge = true;
           } else if (hi.length === 0) {
             for (let d = 0 as Dir; d < 4; d = (d + 1) as Dir) {
               const d2 = ((d + 1) & 3) as Dir;
               if (H[idx(lx + DX[d] + DX[d2], ly + DY[d] + DY[d2])] === h + 1) {
                 put(pack, 'grass_slopeConvex', convexSuffix(d, d2), wx, wy, h + 1);
+                flags[ci] |= F_RAMP;
                 wedge = true;
                 break;
               }

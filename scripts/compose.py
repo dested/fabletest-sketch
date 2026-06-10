@@ -13,8 +13,8 @@ HALF_W, HALF_H, LEVEL = 116, 55, 110
 AX, AY = -128, -236
 S = float(sys.argv[3]) if len(sys.argv) > 3 else 0.5
 
-src = sys.argv[1] if len(sys.argv) > 1 else '/tmp/tilecheck/scene.json'
-out = sys.argv[2] if len(sys.argv) > 2 else '/tmp/tilecheck/scene.png'
+src = sys.argv[1] if len(sys.argv) > 1 else '/Users/sal/code/fabletest-sketch/tmp/scene.json'
+out = sys.argv[2] if len(sys.argv) > 2 else '/Users/sal/code/fabletest-sketch/tmp/scene.png'
 
 data = json.load(open(src))
 tiles = [t for t in data['tiles'] if not t['name'].startswith('__')]
