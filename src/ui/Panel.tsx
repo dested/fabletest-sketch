@@ -22,7 +22,7 @@ export function Panel({ params, onChange }: Props) {
   return (
     <div className={`panel ${open ? '' : 'panel-closed'}`}>
       <div className="panel-header" onClick={() => setOpen(!open)}>
-        <span className="panel-title">⚒ World Builder</span>
+        <span className="panel-title">⚒ Test World Builder</span>
         <span className="panel-toggle">{open ? '▾' : '▸'}</span>
       </div>
       {open && (
