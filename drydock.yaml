@@ -4,7 +4,7 @@
 # portal (SSM), never in this file.
 name: fabletest-sketch
 kind: static          # ssr | static
-runtime: node        # bun | node
+runtime: bun        # bun | node
 port: 3000
 memory: 320        # MiB soft reservation
 build: npm run build
